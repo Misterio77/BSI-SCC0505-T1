@@ -51,7 +51,8 @@ impl Input {
         let state_qty: u16 = lines
             .next()
             .expect("Digite um número de estados válido")?
-            .parse()?;
+            .parse()
+            .expect("O número de estados deve ser numérico");
 
         // Símbolos
         let symbols: Vec<char> = lines
@@ -66,7 +67,8 @@ impl Input {
         let initial_states_qty: u16 = lines
             .next()
             .expect("Digite um número de estados iniciais válido")?
-            .parse()?;
+            .parse()
+            .expect("O número de estados iniciais deve ser numérico");
 
         // Estados aceitáveis
         let accepted_states: Vec<u16> = lines
@@ -81,19 +83,24 @@ impl Input {
         let transitions_qty: u16 = lines
             .next()
             .expect("Digite um número de transições válido")?
-            .parse()?;
+            .parse()
+            .expect("O número de transições deve ser numérico");
 
         // Transições
         let transitions: Vec<(u16, char, u16)> = lines
             .by_ref()
+            // Pegar as próximas linhas igual ao numero de transições
             .take(transitions_qty as usize)
             .map(|line| {
+                // Para cada linha
                 let line = line?;
+                // Cortar nos espaços
                 let mut words = line.split_whitespace();
                 let source = words
                     .next()
                     .expect("Digite o ponto inicial da transição")
-                    .parse()?;
+                    .parse()
+                    .expect("O ponto inicial da transição deve ser numérico");
                 let symbol = words
                     .next()
                     .expect("Digite o símbolo da transição")
@@ -103,7 +110,8 @@ impl Input {
                 let target = words
                     .next()
                     .expect("Digite o ponto final da transição")
-                    .parse()?;
+                    .parse()
+                    .expect("O ponto final da transição deve ser numérico");
                 Ok((source, symbol, target))
             })
             .collect::<Result<Vec<(u16, char, u16)>>>()?;
@@ -112,12 +120,15 @@ impl Input {
         let chains_qty: u16 = lines
             .next()
             .expect("Digite um número de cadeias válido")?
-            .parse()?;
+            .parse()
+            .expect("O número de cadeias deve ser numérico");
 
         // Cadeias
         let chains: Vec<Vec<char>> = lines
             .by_ref()
+            // Pegar as próximas linhas igual ao numero de cadeias
             .take(chains_qty as usize)
+            // Para cada linha, transformar em chars e coletar num vetor
             .map(|line| Ok(line?.chars().collect::<Vec<char>>()))
             .collect::<Result<Vec<Vec<char>>>>()?;
 

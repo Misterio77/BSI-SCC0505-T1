@@ -12,15 +12,15 @@ pub struct Automaton {
     transitions: Graph<u16, char>,
     /// Símbolos válidos
     symbols: Vec<char>,
-    /// Estado(s) iniciais (são armazenados os nós do grafo)
+    /// Estado(s) iniciais (são armazenados índices p/ nós do grafo)
     initial_states: Vec<NodeIndex>,
-    /// Estado(s) aceitos (são armazenados os nós do grafo)
+    /// Estado(s) aceitos (são armazenados índices p/ nós do grafo)
     accepted_states: Vec<NodeIndex>,
 }
 
 impl Automaton {
-    /// Cria um novo autômato, dado vetor de estados, símbolos,
-    /// estados iniciais, estados aceitos e transições
+    /// Cria um novo autômato, dado vetor de estados (u16), símbolos (char),
+    /// estados iniciais (u16), estados aceitos (u16) e transições (tripla u16, char, u16)
     pub fn new(
         states: &[u16],
         symbols: &[char],
@@ -124,10 +124,10 @@ impl Automaton {
 
         // Caso a chain não esteja vazia
         if !chain.is_empty() {
-            // Pegar os vértices que contém o elemento atual da cadeia
+            // Pegar as arestas que contém o elemento atual da cadeia
             let matching_edges = edges.clone().filter(|edge| *edge.weight() == chain[0]);
 
-            // Para cada vértice
+            // Para cada aresta
             for edge in matching_edges {
                 // Seguir no vértice, tirando o elemento atual da cadeia
                 if self.verify_chain_recursive(&edge.target(), &chain[1..]) {
@@ -143,7 +143,7 @@ impl Automaton {
         // Filtrar apenas as transições que são "-" (lambdas)
         let lambda_edges = edges.clone().filter(|edge| *edge.weight() == '-');
 
-        // Tentar cada vértice com lambda
+        // Tentar cada aresta lambda
         for edge in lambda_edges {
             // Chamar ele, com a cadeia intacta (o elemento não é consumido ao entrar num lambda)
             if self.verify_chain_recursive(&edge.target(), chain) {
@@ -152,7 +152,7 @@ impl Automaton {
             }
         }
 
-        // Se chegou aqui, é pq não tem nenhum vértice (nem mesmo lambda) para seguir
+        // Se chegou aqui, é pq não tem nenhum aresta (nem mesmo lambda) para seguir
         // E nenhum dos que tentamos seguir caíram num nó aceito
         // Nesse caso, retornar false
         false
