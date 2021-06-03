@@ -98,7 +98,6 @@ impl Automaton {
     }
     /// Função recursiva de verificação (função interna)
     fn verify_chain_inner(&self, current: &NodeIndex, visited: Vec<&NodeIndex>, chain: &[char]) -> bool {
-        println!("Visitando {:?}", current);
         // Caso não tenha mais símbolos na cadeia, e a posição atual é uma das aceitas
         if chain.is_empty() && self.graph[*current].1 {
             // Aceitar cadeia
