@@ -12,7 +12,6 @@ fn main() -> Result<()> {
     // Criar automato com os dados passados
     let automaton = Automaton::new(
         &input.states,
-        &input.symbols,
         &input.initial_states,
         &input.accepted_states,
         &input.transitions,
@@ -35,7 +34,6 @@ fn main() -> Result<()> {
 /// Inclui tudo nescessário para iniciar e alimentar o autômato
 struct Input {
     states: Vec<u16>,
-    symbols: Vec<char>,
     initial_states: Vec<u16>,
     accepted_states: Vec<u16>,
     transitions: Vec<(u16, char, u16)>,
@@ -54,14 +52,8 @@ impl Input {
             .parse()
             .expect("O número de estados deve ser numérico");
 
-        // Símbolos
-        let symbols: Vec<char> = lines
-            .next()
-            .expect("Digite um número de símbolos válido")?
-            .split_whitespace()
-            .skip(1)
-            .map(|word| word.chars().next().expect("Digite um símbolo válido"))
-            .collect();
+        // Símbolos. Serão ignorados, pq as transições já ditam quais símbolos temos
+        let _symbols = lines.next();
 
         // Qtde de estados iniciais
         let initial_states_qty: u16 = lines
@@ -134,7 +126,6 @@ impl Input {
 
         Ok(Input {
             states: (0..state_qty).collect(),
-            symbols,
             accepted_states,
             initial_states: (0..initial_states_qty).collect(),
             transitions,

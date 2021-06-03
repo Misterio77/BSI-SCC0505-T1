@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum AutomatonError {
     /// Ocorre quando uma transição não é válida
-    InvalidTransition((u16, char, u16)),
+    InvalidTransition(u16),
     /// Ocorre com erros relacionados a leitura de input
     Io(std::io::Error),
     /// Ocorre quando o usuário digita algo que não é número
@@ -14,8 +14,8 @@ pub enum AutomatonError {
 impl fmt::Display for AutomatonError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AutomatonError::InvalidTransition((q0, x, q1)) => {
-                write!(f, "A transição {:?} {:?} {:?} é inválida", q0, x, q1)
+            AutomatonError::InvalidTransition(q) => {
+                write!(f, "A transição é inválida, pois o estado {} não existe", q)
             }
             AutomatonError::Io(e) => {
                 write!(f, "Erro de leitura: {:?}", e)
