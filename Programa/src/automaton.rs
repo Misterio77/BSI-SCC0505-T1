@@ -117,7 +117,6 @@ impl Automaton {
     }
     /// Função recursiva auxiliar (não é pública)
     fn verify_chain_recursive(&self, current_state: &NodeIndex, chain: &[char]) -> bool {
-        println!("Olhando o nó {}", current_state.index());
         // Pegar todas as transições saindo do estado atual
         let edges = self
             .transitions
