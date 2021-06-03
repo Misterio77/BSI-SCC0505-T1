@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     // Travar stdin e ler input
     let input = Input::from_reader(&mut stdin.lock())?;
 
-    // Criar automato com os dados passados
+    // Criar automato com os dados recebidos
     let automaton = Automaton::new(
         &input.states,
         &input.initial_states,
