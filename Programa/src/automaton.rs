@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::fmt;
 
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::{Direction, Graph};
+
+use crate::{AutomatonError, Result};
 
 /// Um autômato
 pub struct Automaton {
@@ -11,66 +12,26 @@ pub struct Automaton {
     transitions: Graph<u16, char>,
     /// Símbolos válidos
     symbols: Vec<char>,
-    /// Estado(s) iniciais
+    /// Estado(s) iniciais (são armazenados os nós do grafo)
     initial_states: Vec<NodeIndex>,
-    /// Estado(s) aceitos
+    /// Estado(s) aceitos (são armazenados os nós do grafo)
     accepted_states: Vec<NodeIndex>,
 }
 
 impl Automaton {
-    pub fn verify_chain(&self, chain: &[char]) -> bool {
-        // Obter estado inicial
-        let mut current_state = match self.initial_states.get(0) {
-            Some(initial) => *initial,
-            None => return false,
-        };
-
-        for symbol in chain {
-            // Caso o símbolo seja -, não faça nenhuma mudança de estado (cadeia vazia)
-            if *symbol == '-' {
-                break;
-            }
-            // Caso o símbolo não esteja na linguagem, rejeite a cadeia
-            if !self.symbols.contains(symbol) {
-                return false;
-            }
-
-            // Pegar as transições que saem daquele estado
-            let mut edges = self
-                .transitions
-                .edges_directed(current_state, Direction::Outgoing);
-
-            // Buscar a transição cujo símbolo bate com o símbolo que estamos verificando
-            // Caso não encontremos essa transição, rejeitar a cadeia
-            let transition = match edges.find(|x| x.weight() == symbol) {
-                Some(transition) => transition,
-                None => return false,
-            };
-            // Armazenar o próximo estado
-            current_state = transition.target();
-        }
-        // Verificar se o estado atual (final) é aceitável. Se sim, aceitar. Se não, rejeitar.
-        self.accepted_states.contains(&current_state)
-    }
-}
-
-/// Construtor de autômato
-/// Existe para simplificar a construção, ao invés de chamar um construtor com vários argumentos
-pub struct AutomatonBuilder {
-    pub states: Vec<u16>,
-    pub symbols: Vec<char>,
-    pub initial_states: Vec<u16>,
-    pub accepted_states: Vec<u16>,
-    pub transitions: Vec<(u16, char, u16)>,
-}
-
-impl AutomatonBuilder {
-    /// Cria um novo automato, baseado nos dados do construtor
-    pub fn build(&self) -> Result<Automaton, AutomatonError> {
+    /// Cria um novo autômato, dado vetor de estados, símbolos,
+    /// estados iniciais, estados aceitos e transições
+    pub fn new(
+        states: &[u16],
+        symbols: &[char],
+        initial_states: &[u16],
+        accepted_states: &[u16],
+        transitions: &[(u16, char, u16)],
+    ) -> Result<Automaton> {
         // Criar um grafo, com tamanho do número de estados, e quantidade de vértices igual ao
         // número de estados multiplicados pelo número de símbolos
         let mut transitions_graph =
-            Graph::with_capacity(self.states.len(), self.states.len() * self.symbols.len());
+            Graph::with_capacity(states.len(), states.len() * symbols.len());
 
         // Vetor que irá armazenar os índices (no grafo) dos estados iniciais
         let mut initial_states_indexes = Vec::new();
@@ -82,7 +43,7 @@ impl AutomatonBuilder {
         let mut index = HashMap::new();
 
         // Adicionar todos os estados em nós do grafo
-        for state in &self.states {
+        for state in states {
             // Adicionar o estado ao grafo, e guardar seu índice
             let state_index = transitions_graph.add_node(*state);
 
@@ -90,17 +51,17 @@ impl AutomatonBuilder {
             index.insert(state, state_index);
 
             // Caso o estado seja um dos iniciais
-            if self.initial_states.contains(&state) {
+            if initial_states.contains(&state) {
                 initial_states_indexes.push(state_index);
             }
             // Caso o estado seja um dos aceitos
-            if self.accepted_states.contains(&state) {
+            if accepted_states.contains(&state) {
                 accepted_states_indexes.push(state_index);
             }
         }
 
         // Adicionar todos as transições em vértices do grafo
-        for transition in self.transitions.iter() {
+        for transition in transitions.iter() {
             // Estado pré
             let q0 = index.get(&transition.0);
             // Estado pós
@@ -108,9 +69,9 @@ impl AutomatonBuilder {
             // Símbolo
             let x = transition.1;
 
-            // Verificar que q0 e q1 existem nos estados, e que x existe nos símbolos
+            // Verificar que q0 e q1 existem nos estados, e que x existe nos símbolos (ou é -)
             // Retornar um erro caso contrário
-            let (q0, q1) = match (q0, q1, self.symbols.contains(&x)) {
+            let (q0, q1) = match (q0, q1, (symbols.contains(&x) || x == '-')) {
                 (Some(q0), Some(q1), true) => Ok((q0, q1)),
                 _ => Err(AutomatonError::InvalidTransition(*transition)),
             }?;
@@ -122,30 +83,79 @@ impl AutomatonBuilder {
         // Retornar autômato criado
         Ok(Automaton {
             transitions: transitions_graph,
-            symbols: self.symbols.clone(),
+            symbols: symbols.into(),
             initial_states: initial_states_indexes,
             accepted_states: accepted_states_indexes,
         })
     }
-}
+    /// Dado uma cadeia, retorna se ela é válida ou não dentro da linguagem
+    pub fn verify_chain(&self, chain: &[char]) -> bool {
+        // Caso a cadeia contenha '-' (indica lambda), transformar num slice vazio
+        let chain = if chain.contains(&'-') {
+            &[]
+        } else {
+            chain
+        };
 
-/// Possíveis erros que podem ocorrer
-#[derive(Debug, Clone, Copy)]
-pub enum AutomatonError {
-    /// Ocorre quando uma transição não é válida
-    InvalidTransition((u16, char, u16)),
-}
-
-/// Marcar como erro
-impl std::error::Error for AutomatonError {}
-
-/// Mensagens de erro
-impl fmt::Display for AutomatonError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AutomatonError::InvalidTransition((q0, x, q1)) => {
-                write!(f, "A transição {:?} {:?} {:?} é inválida", q0, x, q1)
+        for symbol in chain.iter() {
+            // Caso algum dos símbolos da cadeia não exista na linguagem
+            if !self.symbols.contains(symbol) {
+                return false;
             }
         }
+
+        // Para cada possibilidade de estado inicial
+        for initial_state in &self.initial_states {
+            // Caso a função recursiva retorne true, retornar true também
+            // Se não, tentar com o próximo
+            if self.verify_chain_recursive(initial_state, chain) {
+                return true;
+            }
+        }
+        // Caso nenhum tenha retornado true, retornar false
+        false
+    }
+    /// Função recursiva auxiliar (não é pública)
+    fn verify_chain_recursive(&self, current_state: &NodeIndex, chain: &[char]) -> bool {
+        println!("Olhando o nó {}", current_state.index());
+        // Pegar todas as transições saindo do estado atual
+        let edges = self
+            .transitions
+            .edges_directed(*current_state, Direction::Outgoing);
+
+        // Caso a chain não esteja vazia
+        if !chain.is_empty() {
+            // Pegar os vértices que contém o elemento atual da cadeia
+            let matching_edges = edges.clone().filter(|edge| *edge.weight() == chain[0]);
+
+            // Para cada vértice
+            for edge in matching_edges {
+                // Seguir no vértice, tirando o elemento atual da cadeia
+                if self.verify_chain_recursive(&edge.target(), &chain[1..]) {
+                    // Caso em algum desses esteja verificado, propagar isso
+                    return true;
+                }
+            }
+        // Caso esteja vazia, e o estado atual bate com um dos aceitos
+        } else if self.accepted_states.contains(current_state) {
+                return true
+        }
+
+        // Filtrar apenas as transições que são "-" (lambdas)
+        let lambda_edges = edges.clone().filter(|edge| *edge.weight() == '-');
+
+        // Tentar cada vértice com lambda
+        for edge in lambda_edges {
+            // Chamar ele, com a cadeia intacta (o elemento não é consumido ao entrar num lambda)
+            if self.verify_chain_recursive(&edge.target(), chain) {
+                // Caso em algum desses esteja verificado, propagar isso
+                return true;
+            }
+        }
+
+        // Se chegou aqui, é pq não tem nenhum vértice (nem mesmo lambda) para seguir
+        // E nenhum dos que tentamos seguir caíram num nó aceito
+        // Nesse caso, retornar false
+        false
     }
 }
