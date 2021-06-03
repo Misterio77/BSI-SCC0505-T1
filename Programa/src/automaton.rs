@@ -65,9 +65,9 @@ impl Automaton {
             let (q0, x, q1) = transition;
 
             // Verificar que o estado pré existe
-            let q0 = index.get(q0).ok_or(AutomatonError::InvalidTransition(*q0))?;
+            let q0 = *index.get(q0).ok_or(AutomatonError::InvalidTransition(*q0))?;
             // Verificar que o estado pós existe
-            let q1 = index.get(q1).ok_or(AutomatonError::InvalidTransition(*q1))?;
+            let q1 = *index.get(q1).ok_or(AutomatonError::InvalidTransition(*q1))?;
             // Verificar se o símbolo é lambda
             let x = match x {
                 // Caso seja lambda, colocar None
@@ -76,7 +76,7 @@ impl Automaton {
                 x => Some(*x),
             };
             // Adicionar aresta ao grafo
-            transitions_graph.add_edge(*q0, *q1, x);
+            transitions_graph.add_edge(q0, q1, x);
         }
 
         // Retornar autômato criado
